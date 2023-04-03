@@ -4,6 +4,10 @@ LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llam
 
 ## Demo
 
+
+https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-ae83-e23972e2dcff.mov
+
+
 ## Setup
 
 - Install [LLaMA C++](https://github.com/ggerganov/llama.cpp) following instructions;
