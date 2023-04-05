@@ -2,6 +2,8 @@
 
 LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
+**UPDATE**: Now supports streaming!
+
 ## Demo
 
 
@@ -11,8 +13,8 @@ https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-
 ## Setup
 
 - Install [LLaMA C++](https://github.com/ggerganov/llama.cpp) following instructions;
-  - make sure the binary `main` is at the top level;
-  - make sure models are converted and quantized as `models/7B/ggml-model-q4_0.bin`;
+  - Make sure the binary `main` is at the top level;
+  - Make sure models are converted and quantized as `models/7B/ggml-model-q4_0.bin`;
 
 - Set up python environment:
 ```bash
@@ -30,11 +32,13 @@ uvicorn llama_server:app --reload
 - Check out [my fork](https://github.com/nuance1979/chatbot-ui) of Chatbot UI and start the app;
 ```bash
 git clone https://github.com/nuance1979/chatbot-ui
+cd chatbot-ui
 git checkout llama
 npm i
 npm run dev
 ```
 - Open the link http://localhost:3000 in your browser;
+  - Click "OpenAI API Key" at the bottom left corner and enter your [OpenAI API Key](https://platform.openai.com/account/api-keys).
 - Enjoy!
 
 ## More
@@ -45,9 +49,17 @@ export LLAMA_MODEL_ID=llama-13b  # llama-7b/llama-33b/llama-65b
 uvicorn llama_server:app --reload
 ```
 
+- Try streaming mode by restarting Chatbot UI:
+```bash
+export LLAMA_STREAM_MODE=1
+npm run dev
+```
+
 ## Limitations
 
-Without code change in llama.cpp, I couldn't figure out a way to do Server-Sent Events (SSE) even though there exists a nice library to do it ([sse-starlette](https://github.com/sysid/sse-starlette)).
+- It does not work on Windows because of the limitations of [selectors](https://docs.python.org/3/library/selectors.html);
+- "Regenerate response" is currently not working;
+- IMHO, the prompt/reverse-prompt machanism of LLaMA C++'s CLI needs an overhaul. I tried very hard to dance around it but the whole thing is still a hack.
 
 ## Fun facts
 
