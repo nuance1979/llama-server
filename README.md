@@ -2,6 +2,8 @@
 
 LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
+🦙LLaMA C++ ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
+
 **UPDATE**: Now supports streaming!
 
 ## Demo
@@ -55,7 +57,7 @@ uvicorn llama_server:app --reload
 
 - Try streaming mode by restarting Chatbot UI:
 ```bash
-export LLAMA_STREAM_MODE=1
+export LLAMA_STREAM_MODE=1  # 0 to disable streaming
 npm run dev
 ```
 
