@@ -23,7 +23,8 @@ from sse_starlette import EventSourceResponse
 LLAMA_CPP_HOME = Path(os.environ.get("LLAMA_CPP_HOME", "../llama.cpp"))
 LLAMA_CPP_BIN = LLAMA_CPP_HOME / "main"
 LLAMA_CPP_MODELS = LLAMA_CPP_HOME / "models"
-PROMPTS = LLAMA_CPP_HOME / "prompts" / "chat-with-bob.txt"
+PROMPT_PATH = LLAMA_CPP_HOME / "prompts" / "chat-with-bob.txt"
+PROMPT_SIZE = len(PROMPT_PATH.read_text())
 MODEL_FILE_NAME = "ggml-model-q4_0.bin"
 KNOWN_MODELS = {
     "llama-7b": {
@@ -106,9 +107,12 @@ cmds = [
     "-r",
     "User:",
     "-f",
-    str(PROMPTS),
+    str(PROMPT_PATH),
 ]
-pipe = Popen(cmds, stdin=PIPE, stdout=PIPE)
+pipe = Popen(cmds, stdin=PIPE, stdout=PIPE, text=True, encoding="utf-8")
+# Skip system prompt
+line = pipe.stdout.read(PROMPT_SIZE)
+logger.info("system_prompt: %s", line)
 buffer = deque([], maxlen=20)
 
 
@@ -116,47 +120,42 @@ buffer = deque([], maxlen=20)
 def chat_stream(user_utt: str) -> Generator[Dict[str, Any], None, None]:
     selector = selectors.DefaultSelector()
     selector.register(pipe.stdout, selectors.EVENT_READ)
-    pipe.stdin.write(f"{user_utt}\n".encode())
+    pipe.stdin.write(user_utt)
+    pipe.stdin.write("\n")
     pipe.stdin.flush()
 
-    ok = False
+    buffer.clear()
+    counter = 0
     done = False
     while not done:
         for key, _ in selector.select(0.1):
-            char = key.fileobj.read(1).decode()
+            char = key.fileobj.read(1)
+            counter += 1
+            # Skip prefix "Bob: "
+            if counter <= 4:
+                continue
             buffer.append(char)
             if len(buffer) < 5:
                 continue
-            if ok:
-                # Check reverse prompt
-                if "".join(buffer).startswith("User:"):
-                    done = True
-                    break
-                payload = Completion(
-                    choices=[
-                        Choice(
-                            delta=Message(role="assistant", content=buffer.popleft())
-                        )
-                    ]
-                )
-                yield {"event": "event", "data": payload.json()}
-            elif "".join(buffer).endswith("User:Bob: "):  # Skip system prompt
-                buffer.clear()
-                ok = True
+            # Check reverse prompt
+            if "".join(buffer).startswith("User:"):
+                done = True
+                break
+            payload = Completion(
+                choices=[
+                    Choice(delta=Message(role="assistant", content=buffer.popleft()))
+                ]
+            )
+            yield {"event": "event", "data": payload.json()}
     yield {"event": "event", "data": "[DONE]"}
 
 
 def chat_nonstream(user_utt: str) -> Completion:
-    pipe.stdin.write(f"{user_utt}\n".encode())
+    pipe.stdin.write(user_utt)
+    pipe.stdin.write("\n")
     pipe.stdin.flush()
-    # HACK: assumes the assistant response is the last line returned
-    #   from llama.cpp binary and that line has prefix `User:Bob: `.
-    line = pipe.stdout.readline().decode()
-    while line:
-        logger.debug("line: %s", line.strip())
-        if line.startswith("User:Bob:"):
-            break
-        line = pipe.stdout.readline().decode()
+    line = pipe.stdout.readline()
+    # Skip prefix "Bob: "
     assistant_utt = line.split(": ")[-1]
     logger.info("assistant: %s", assistant_utt)
     return Completion(
