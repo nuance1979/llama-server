@@ -17,39 +17,20 @@ from typing import Generator
 from typing import List
 from typing import Optional
 
+import click
 import uvicorn
+import yaml
 from fastapi import FastAPI
 from pydantic import BaseModel
 from pyllamacpp.model import Model
 from sse_starlette import EventSourceResponse
 
-LLAMA_SERVER_HOME = Path(os.environ.get("LLAMA_SERVER_HOME", "."))
-LLAMA_MODELS = LLAMA_SERVER_HOME / "models"
-PROMPT_PATH = LLAMA_SERVER_HOME / "prompts" / "chat-with-bob.txt"
+
+PROMPT_PATH = Path(__file__).parent / "prompts" / "chat-with-bob.txt"
 PROMPT = PROMPT_PATH.read_text().strip()
 PROMPT_SIZE = len(PROMPT)
 REVERSE_PROMPT = "User:"
 REPLY_PREFIX = "Bob: "
-TIMEOUT = 5
-MODEL_FILE_NAME = "ggml-model-q4_0.bin"
-KNOWN_MODELS = {
-    "llama-7b": {
-        "name": "LLAMA-7B",
-        "path": str(LLAMA_MODELS / "7B" / MODEL_FILE_NAME),
-    },
-    "llama-13b": {
-        "name": "LLAMA-13B",
-        "path": str(LLAMA_MODELS / "13B" / MODEL_FILE_NAME),
-    },
-    "llama-33b": {
-        "name": "LLAMA-33B",
-        "path": str(LLAMA_MODELS / "33B" / MODEL_FILE_NAME),
-    },
-    "llama-65b": {
-        "name": "LLAMA-65B",
-        "path": str(LLAMA_MODELS / "65B" / MODEL_FILE_NAME),
-    },
-}
 
 
 class Message(BaseModel):
@@ -140,9 +121,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(name=__name__)
 
-model_id = os.environ.get("LLAMA_MODEL_ID", "llama-7b")
-assert model_id in KNOWN_MODELS, f"Unknown model id: {model_id}"
-model_path = KNOWN_MODELS[model_id]["path"]
+model_id = None
+model_path = None
 output_q = Queue()
 input_q = Queue()
 buffer = Buffer(PROMPT_SIZE, REVERSE_PROMPT)
@@ -240,5 +220,56 @@ def models():
     return ModelList(data=[ModelInfo(id=model_id)])
 
 
+class ModelPath(BaseModel):
+    name: str
+    path: str
+
+
+class KnownModels(BaseModel):
+    model_home: str
+    models: Dict[str, ModelPath]
+
+
+@click.command(context_settings={"show_default": True})
+@click.option(
+    "--models-yml",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to the `models.yml` file.",
+)
+@click.option("--host", type=click.STRING, default="127.0.0.1", help="Server host.")
+@click.option("--port", type=click.INT, default=8000, help="Server port.")
+@click.option(
+    "--reload",
+    is_flag=True,
+    default=False,
+    help="Reload server automatically (for development).",
+)
+@click.option("--model-id", type=click.STRING, default="llama-7b", help="Model id.")
+@click.option("--model-path", type=click.Path(exists=True), help="Model path.")
+def main(
+    models_yml: Path,
+    host: str,
+    port: int,
+    reload: bool,
+    model_id: Optional[str] = None,
+    model_path: Optional[Path] = None,
+):
+    with open(models_yml, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+    KNOWN_MODELS = KnownModels.parse_obj(data)
+    if model_id is None:
+        model_id = os.environ.get("LLAMA_MODEL_ID", "llama-7b")
+        assert model_id in KNOWN_MODELS.models, f"Unknown model id: {model_id}"
+    if model_path is None:
+        model_path = Path(KNOWN_MODELS.models.get(model_id).path)
+        if not model_path.is_absolute():
+            model_path = Path(KNOWN_MODELS.model_home) / model_path
+    globals()["model_id"] = model_id
+    globals()["model_path"] = str(model_path)
+
+    uvicorn.run("llama_server.server:app", host=host, port=port, reload=reload)
+
+
 if __name__ == "__main__":
-    uvicorn.run("llama_server:app", host="127.0.0.1", port=8000, reload=True)
+    main()
