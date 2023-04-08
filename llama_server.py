@@ -5,43 +5,49 @@
 """Serve llama models with llama.cpp ."""
 import logging
 import os
-import selectors
+import time
 from collections import deque
+from contextlib import asynccontextmanager
+from multiprocessing import Process
+from multiprocessing import Queue
 from pathlib import Path
-from subprocess import PIPE
-from subprocess import Popen
 from typing import Any
 from typing import Dict
 from typing import Generator
 from typing import List
 from typing import Optional
 
+import uvicorn
 from fastapi import FastAPI
 from pydantic import BaseModel
+from pyllamacpp.model import Model
 from sse_starlette import EventSourceResponse
 
-LLAMA_CPP_HOME = Path(os.environ.get("LLAMA_CPP_HOME", "../llama.cpp"))
-LLAMA_CPP_BIN = LLAMA_CPP_HOME / "main"
-LLAMA_CPP_MODELS = LLAMA_CPP_HOME / "models"
-PROMPT_PATH = LLAMA_CPP_HOME / "prompts" / "chat-with-bob.txt"
-PROMPT_SIZE = len(PROMPT_PATH.read_text())
+LLAMA_SERVER_HOME = Path(os.environ.get("LLAMA_SERVER_HOME", "."))
+LLAMA_MODELS = LLAMA_SERVER_HOME / "models"
+PROMPT_PATH = LLAMA_SERVER_HOME / "prompts" / "chat-with-bob.txt"
+PROMPT = PROMPT_PATH.read_text().strip()
+PROMPT_SIZE = len(PROMPT)
+REVERSE_PROMPT = "User:"
+REPLY_PREFIX = "Bob: "
+TIMEOUT = 5
 MODEL_FILE_NAME = "ggml-model-q4_0.bin"
 KNOWN_MODELS = {
     "llama-7b": {
         "name": "LLAMA-7B",
-        "path": str(LLAMA_CPP_MODELS / "7B" / MODEL_FILE_NAME),
+        "path": str(LLAMA_MODELS / "7B" / MODEL_FILE_NAME),
     },
     "llama-13b": {
         "name": "LLAMA-13B",
-        "path": str(LLAMA_CPP_MODELS / "13B" / MODEL_FILE_NAME),
+        "path": str(LLAMA_MODELS / "13B" / MODEL_FILE_NAME),
     },
     "llama-33b": {
         "name": "LLAMA-33B",
-        "path": str(LLAMA_CPP_MODELS / "33B" / MODEL_FILE_NAME),
+        "path": str(LLAMA_MODELS / "33B" / MODEL_FILE_NAME),
     },
     "llama-65b": {
         "name": "LLAMA-65B",
-        "path": str(LLAMA_CPP_MODELS / "65B" / MODEL_FILE_NAME),
+        "path": str(LLAMA_MODELS / "65B" / MODEL_FILE_NAME),
     },
 }
 
@@ -79,84 +85,140 @@ class ModelList(BaseModel):
     object: str = "list"
 
 
+class Buffer:
+    def __init__(self, prompt_size: int, reverse_prompt: str) -> None:
+        self._q = deque(maxlen=10)
+        self._c = 0
+        self._prompt_size = prompt_size
+        self._reverse_prompt = reverse_prompt
+        self._is_first = True
+        self._c_first = 0
+
+    def __len__(self) -> int:
+        return self._c
+
+    def prompt_consumed(self) -> bool:
+        return self._c_first >= self._prompt_size
+
+    def clear(self) -> None:
+        self._q.clear()
+        self._c = 0
+
+    def append(self, data: str) -> None:
+        if self._is_first:
+            self._c_first += len(data)
+            if self._c_first < self._prompt_size:
+                return
+            else:
+                self._is_first = False
+                diff = self._c_first - self._prompt_size
+                if diff > 0:
+                    self.append(data[-diff:])
+                self._c_first = self._prompt_size
+        else:
+            self._c += len(data)
+            self._q.append(data)
+
+    def popleft(self) -> str:
+        if self._c < len(self._reverse_prompt):
+            return ""
+        data = self._q.popleft()
+        self._c -= len(data)
+        if self._c < len(self._reverse_prompt):
+            diff = self._c - len(self._reverse_prompt)
+            self._q.appendleft(data[diff:])
+            self._c = len(self._reverse_prompt)
+            data = data[:diff]
+        return data
+
+    def turnends(self) -> bool:
+        return "".join(self._q).endswith(self._reverse_prompt)
+
+
 logging.basicConfig(
     format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(name=__name__)
 
-app = FastAPI()
-
-
 model_id = os.environ.get("LLAMA_MODEL_ID", "llama-7b")
 assert model_id in KNOWN_MODELS, f"Unknown model id: {model_id}"
-cmds = [
-    str(LLAMA_CPP_BIN),
-    "-m",
-    KNOWN_MODELS[model_id]["path"],
-    "-c",
-    "512",
-    "-b",
-    "1024",
-    "-n",
-    "256",
-    "--keep",
-    "48",
-    "--repeat_penalty",
-    "1.0",
-    "-i",
-    "-r",
-    "User:",
-    "-f",
-    str(PROMPT_PATH),
-]
-pipe = Popen(cmds, stdin=PIPE, stdout=PIPE, text=True, encoding="utf-8")
-# Skip system prompt
-line = pipe.stdout.read(PROMPT_SIZE)
-logger.info("system_prompt: %s", line)
-buffer = deque([], maxlen=20)
+model_path = KNOWN_MODELS[model_id]["path"]
+output_q = Queue()
+input_q = Queue()
+buffer = Buffer(PROMPT_SIZE, REVERSE_PROMPT)
 
 
-# Adapted from example code returned by ChatGPT
+def generate(model_path: str, input_q: Queue, output_q: Queue) -> None:
+    def output_callback(text: str) -> None:
+        output_q.put(text)
+
+    def input_callback() -> str:
+        return input_q.get()
+
+    model = Model(ggml_model=model_path, n_ctx=512)
+    model.generate(
+        PROMPT,
+        new_text_callback=output_callback,
+        grab_text_callback=input_callback,
+        n_predict=256,
+        n_batch=1024,
+        n_keep=48,
+        repeat_penalty=1.0,
+        n_threads=8,
+        interactive=True,
+        antiprompt=[REVERSE_PROMPT],
+    )
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    p = Process(target=generate, args=(model_path, input_q, output_q))
+    p.start()
+    # Skip system prompt
+    while not buffer.prompt_consumed():
+        buffer.append(output_q.get())
+    logger.info("ready to serve...")
+    yield
+    input_q.close()
+    output_q.close()
+    if p.is_alive():
+        p.terminate()
+        time.sleep(5)
+        p.kill()
+
+
+app = FastAPI(lifespan=lifespan)
+
+
 def chat_stream(user_utt: str) -> Generator[Dict[str, Any], None, None]:
-    selector = selectors.DefaultSelector()
-    selector.register(pipe.stdout, selectors.EVENT_READ)
-    pipe.stdin.write(user_utt)
-    pipe.stdin.write("\n")
-    pipe.stdin.flush()
-
-    buffer.clear()
-    counter = 0
-    done = False
-    while not done:
-        for key, _ in selector.select(0.1):
-            char = key.fileobj.read(1)
-            counter += 1
-            # Skip prefix "Bob: "
-            if counter <= 4:
-                continue
-            buffer.append(char)
-            if len(buffer) < 5:
-                continue
-            # Check reverse prompt
-            if "".join(buffer).startswith("User:"):
-                done = True
-                break
-            payload = Completion(
-                choices=[
-                    Choice(delta=Message(role="assistant", content=buffer.popleft()))
-                ]
-            )
-            yield {"event": "event", "data": payload.json()}
+    for text in _chat(user_utt):
+        payload = Completion(
+            choices=[Choice(delta=Message(role="assistant", content=text))]
+        )
+        yield {"event": "event", "data": payload.json()}
     yield {"event": "event", "data": "[DONE]"}
 
 
+def _chat(user_utt: str) -> Generator[str, None, None]:
+    input_q.put(user_utt)
+    counter = 0
+    while not buffer.turnends():
+        text = output_q.get()
+        counter += len(text)
+        if counter <= len(REPLY_PREFIX):
+            continue
+        buffer.append(text)
+        yield buffer.popleft()
+    while True:
+        text = buffer.popleft()
+        if not text:
+            break
+        yield text
+    buffer.clear()
+
+
 def chat_nonstream(user_utt: str) -> Completion:
-    pipe.stdin.write(user_utt)
-    pipe.stdin.write("\n")
-    pipe.stdin.flush()
-    line = pipe.stdout.readline()
-    # Skip prefix "Bob: "
-    assistant_utt = line.split(": ")[-1]
+    assistant_utt = "".join(_chat(user_utt))
     logger.info("assistant: %s", assistant_utt)
     return Completion(
         choices=[Choice(message=Message(role="assistant", content=assistant_utt))]
@@ -176,3 +238,7 @@ def chat(conv: Conversation):
 @app.get("/v1/models")
 def models():
     return ModelList(data=[ModelInfo(id=model_id)])
+
+
+if __name__ == "__main__":
+    uvicorn.run("llama_server:app", host="127.0.0.1", port=8000, reload=True)

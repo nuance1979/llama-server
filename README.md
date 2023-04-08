@@ -4,6 +4,8 @@ LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llam
 
 🦙LLaMA C++ ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
 
+**UPDATE**: Now supports Windows through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)!
+
 **UPDATE**: Now supports streaming!
 
 ## Demo
@@ -18,9 +20,11 @@ https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-
 
 ## Setup
 
-- Install [LLaMA C++](https://github.com/ggerganov/llama.cpp) following instructions;
-  - Make sure the binary `main` is at the top level;
-  - Make sure models are converted and quantized as `models/7B/ggml-model-q4_0.bin`;
+- Get your favorite LLaMA models by
+  - Download from [🤗Hugging Face](https://huggingface.co/models?sort=downloads&search=ggml);
+  - Or follow instructions at [LLaMA C++](https://github.com/ggerganov/llama.cpp);
+  - Make sure models are converted and quantized;
+  - Copy models to the folders with correct name, e.g., `models/7B/ggml-model-q4_0.bin`;
 
 - Set up python environment:
 ```bash
@@ -31,8 +35,8 @@ python -m pip install -r requirements.txt
 
 - Start LLaMA Server:
 ```bash
-export LLAMA_CPP_HOME=<your_llama_cpp_repo_path>
-uvicorn llama_server:app --reload
+export LLAMA_SERVER_HOME=$(git rev-parse --show-toplevel)  # path to this repo
+python -m llama_server
 ```
 
 - Check out [my fork](https://github.com/nuance1979/chatbot-ui) of Chatbot UI and start the app;
@@ -44,7 +48,12 @@ npm i
 npm run dev
 ```
 - Open the link http://localhost:3000 in your browser;
-  - Click "OpenAI API Key" at the bottom left corner and enter your [OpenAI API Key](https://platform.openai.com/account/api-keys).
+  - Click "OpenAI API Key" at the bottom left corner and enter your [OpenAI API Key](https://platform.openai.com/account/api-keys);
+  - Or follow instructions at [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui) to put your key into a `.env.local` file and restart;
+  ```bash
+  cp .env.local.example .env.local
+  <edit .env.local to add your OPENAI_API_KEY>
+  ```
 - Enjoy!
 
 ## More
@@ -52,7 +61,7 @@ npm run dev
 - Try a larger model if you have it:
 ```bash
 export LLAMA_MODEL_ID=llama-13b  # llama-7b/llama-33b/llama-65b
-uvicorn llama_server:app --reload
+python -m llama_server
 ```
 
 - Try streaming mode by restarting Chatbot UI:
@@ -63,9 +72,8 @@ npm run dev
 
 ## Limitations
 
-- It does not work on Windows because of the limitations of [selectors](https://docs.python.org/3/library/selectors.html);
 - "Regenerate response" is currently not working;
-- IMHO, the prompt/reverse-prompt machanism of LLaMA C++'s CLI needs an overhaul. I tried very hard to dance around it but the whole thing is still a hack.
+- IMHO, the prompt/reverse-prompt machanism of LLaMA C++'s interactive mode needs an overhaul. I tried very hard to dance around it but the whole thing is still a hack.
 
 ## Fun facts
 
