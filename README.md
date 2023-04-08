@@ -4,7 +4,7 @@ LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llam
 
 🦙LLaMA C++ ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
 
-**UPDATE**: Now supports Windows through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)!
+**UPDATE**: Now supports Windows through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)! And better streaming!
 
 **UPDATE**: Now supports streaming!
 
