@@ -1,8 +1,8 @@
 # LLaMA Server
 
-LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
+LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
-🦙LLaMA C++ ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
+🦙LLaMA C++ (via 🐍PyLLaMACpp)➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
 
 **UPDATE**: Now supports better streaming through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)!
 
