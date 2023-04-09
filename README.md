@@ -2,9 +2,9 @@
 
 LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
-🦙LLaMA C++ (via 🐍PyLLaMACpp)➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
+🦙LLaMA C++ (via 🐍PyLLaMACpp) ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
 
-**UPDATE**: Now supports better streaming through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)!
+**UPDATE**: Now supports better streaming through [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)!
 
 **UPDATE**: Now supports streaming!
 
@@ -27,7 +27,7 @@ https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-
 
 - Edit the `models.yml` to provide your `model_home` directory and add your favorite [South American camelids](https://en.wikipedia.org/wiki/Lama_(genus)), e.g.:
 ```yaml
-model_home: <my_models_directory>
+model_home: /path/to/your/models
 models:
   llama-7b:
     name: LLAMA-7B
