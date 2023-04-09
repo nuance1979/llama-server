@@ -16,7 +16,7 @@ mypy:
 
 debug:
 	python3 setup.py build
-	pip install -e .
+	python3 -m pip install -e .
 
 release: clean
 	python3 setup.py sdist
@@ -24,7 +24,7 @@ release: clean
 
 publish: clean
 	python3 setup.py sdist
-	twine check --strict dist/*
-	twine upload --verbose dist/*
+	python3 -m twine check --strict dist/*
+	python3 -m twine upload --verbose dist/*
 
 .PHONY: test clean lint mypy debug release publish

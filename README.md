@@ -38,7 +38,7 @@ models:
 ```bash
 conda create -n llama python=3.9
 conda activate llama
-python -m pip install .
+make debug  # local install
 ```
 
 - Start LLaMA Server with your `models.yml` file:
@@ -67,7 +67,7 @@ npm run dev
 
 - Try a larger model if you have it:
 ```bash
-python -m llama_server --models-yml models.yml --model-id llama-13b
+python -m llama_server --models-yml models.yml --model-id llama-13b  # or any `model_id` defined in `models.yml`
 ```
 
 - Try non-streaming mode by restarting Chatbot UI:
