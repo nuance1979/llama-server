@@ -4,7 +4,7 @@ LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llam
 
 🦙LLaMA C++ ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
 
-**UPDATE**: Now supports Windows through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)! And better streaming!
+**UPDATE**: Now supports better streaming through [pyllamacpp](https://github.com/nomic-ai/pyllamacpp)!
 
 **UPDATE**: Now supports streaming!
 
@@ -24,19 +24,26 @@ https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-
   - Download from [🤗Hugging Face](https://huggingface.co/models?sort=downloads&search=ggml);
   - Or follow instructions at [LLaMA C++](https://github.com/ggerganov/llama.cpp);
   - Make sure models are converted and quantized;
-  - Copy models to the folders with correct name, e.g., `models/7B/ggml-model-q4_0.bin`;
 
-- Set up python environment:
+- Edit the `models.yml` to provide your `model_home` directory and add your favorite [South American camelids](https://en.wikipedia.org/wiki/Lama_(genus)), e.g.:
+```yaml
+model_home: <my_models_directory>
+models:
+  llama-7b:
+    name: LLAMA-7B
+    path: 7B/ggml-model-q4_0.bin  # relative to `model_home` or an absolute path
+```
+
+- Set up python environment and install:
 ```bash
 conda create -n llama python=3.9
 conda activate llama
-python -m pip install -r requirements.txt
+python -m pip install .
 ```
 
-- Start LLaMA Server:
+- Start LLaMA Server with your `models.yml` file:
 ```bash
-export LLAMA_SERVER_HOME=$(git rev-parse --show-toplevel)  # path to this repo
-python -m llama_server
+python -m llama_server --models-yml models.yml --model-id llama-7b
 ```
 
 - Check out [my fork](https://github.com/nuance1979/chatbot-ui) of Chatbot UI and start the app;
@@ -60,11 +67,10 @@ npm run dev
 
 - Try a larger model if you have it:
 ```bash
-export LLAMA_MODEL_ID=llama-13b  # llama-7b/llama-33b/llama-65b
-python -m llama_server
+python -m llama_server --models-yml models.yml --model-id llama-13b
 ```
 
-- Try streaming mode by restarting Chatbot UI:
+- Try non-streaming mode by restarting Chatbot UI:
 ```bash
 export LLAMA_STREAM_MODE=1  # 0 to disable streaming
 npm run dev
