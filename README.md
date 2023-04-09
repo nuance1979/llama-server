@@ -1,5 +1,7 @@
 # LLaMA Server
 
+[![PyPI version](https://img.shields.io/pypi/v/llama-server)](https://pypi.org/project/llama-server/)[![Unit test](https://github.com/nuance1979/llama-server/workflows/test.yml/badge.svg?branch=main)](https://github.com/nuance1979/llama-server/actions)[![GitHub stars](https://img.shields.io/github/stars/nuance1979/llama-server)](https://star-history.com/#nuance1979/llama-server&Date)[![GitHub license](https://img.shields.io/github/license/nuance1979/llama-server)](https://github.com/nuance1979/llama-server/blob/master/LICENSE)
+
 LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
 🦙LLaMA C++ (via 🐍PyLLaMACpp) ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
