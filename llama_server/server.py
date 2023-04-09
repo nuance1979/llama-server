@@ -27,7 +27,7 @@ from sse_starlette import EventSourceResponse
 
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "chat-with-bob.txt"
-PROMPT = PROMPT_PATH.read_text().strip()
+PROMPT = PROMPT_PATH.read_text(encoding="utf-8").strip()
 PROMPT_SIZE = len(PROMPT)
 REVERSE_PROMPT = "User:"
 REPLY_PREFIX = "Bob: "

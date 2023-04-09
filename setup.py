@@ -10,7 +10,7 @@ from setuptools import setup
 
 def get_version() -> str:
     # https://packaging.python.org/guides/single-sourcing-package-version/
-    init = (Path("llama_server") / "__init__.py").read_text().split()
+    init = (Path("llama_server") / "__init__.py").read_text(encoding="utf-8").split()
     return init[init.index("__version__") + 2][1:-1]
 
 
@@ -40,7 +40,7 @@ setup(
     name="llama-server",
     version=get_version(),
     description="LLaMA Server combines the power of LLaMA C++ with the beauty of Chatbot UI.",
-    long_description=Path("README.md").read_text(),
+    long_description=Path("README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     url="https://github.com/nuance1979/llama-server",
     author="Yi Su",
