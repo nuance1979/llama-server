@@ -27,7 +27,7 @@ https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-
   - Or follow instructions at [LLaMA C++](https://github.com/ggerganov/llama.cpp);
   - Make sure models are converted and quantized;
 
-- Edit the `models.yml` to provide your `model_home` directory and add your favorite [South American camelids](https://en.wikipedia.org/wiki/Lama_(genus)), e.g.:
+- Create a `models.yml` file to provide your `model_home` directory and add your favorite [South American camelids](https://en.wikipedia.org/wiki/Lama_(genus)), e.g.:
 ```yaml
 model_home: /path/to/your/models
 models:
@@ -35,17 +35,32 @@ models:
     name: LLAMA-7B
     path: 7B/ggml-model-q4_0.bin  # relative to `model_home` or an absolute path
 ```
+See [models.yml](https://github.com/nuance1979/llama-server/blob/main/models.yml) for an example.
 
-- Set up python environment and install:
+- Set up python environment:
 ```bash
 conda create -n llama python=3.9
 conda activate llama
-make debug  # local install
+```
+
+- Install LLaMA Server:
+  - From PyPI:
+  ```bash
+  python -m pip install llama-server
+  ```
+  - Or from source:
+  ```bash
+  python -m pip install git+https://github.com/nuance1979/llama-server.git
+  ```
+
+- Install latest version of PyLLaMACpp: (*Note:* this step will not be needed **after** PyLLaMACpp makes a new release.)
+```bash
+python -m pip install git+https://github.com/nomic-ai/pyllamacpp.git --upgrade
 ```
 
 - Start LLaMA Server with your `models.yml` file:
 ```bash
-python -m llama_server --models-yml models.yml --model-id llama-7b
+llama_server --models-yml models.yml --model-id llama-7b
 ```
 
 - Check out [my fork](https://github.com/nuance1979/chatbot-ui) of Chatbot UI and start the app;
@@ -69,7 +84,7 @@ npm run dev
 
 - Try a larger model if you have it:
 ```bash
-python -m llama_server --models-yml models.yml --model-id llama-13b  # or any `model_id` defined in `models.yml`
+llama_server --models-yml models.yml --model-id llama-13b  # or any `model_id` defined in `models.yml`
 ```
 
 - Try non-streaming mode by restarting Chatbot UI:
