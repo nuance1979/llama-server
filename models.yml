@@ -5,7 +5,7 @@
 #
 # Note: path can be relative to `model_home` or absolute
 #
-model_home: .
+model_home: ./models
 models:
   llama-7b:
     name: LLAMA-7B

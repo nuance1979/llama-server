@@ -60,7 +60,7 @@ python -m pip install git+https://github.com/nomic-ai/pyllamacpp.git --upgrade
 
 - Start LLaMA Server with your `models.yml` file:
 ```bash
-llama_server --models-yml models.yml --model-id llama-7b
+llama-server --models-yml models.yml --model-id llama-7b
 ```
 
 - Check out [my fork](https://github.com/nuance1979/chatbot-ui) of Chatbot UI and start the app;
@@ -84,7 +84,7 @@ npm run dev
 
 - Try a larger model if you have it:
 ```bash
-llama_server --models-yml models.yml --model-id llama-13b  # or any `model_id` defined in `models.yml`
+llama-server --models-yml models.yml --model-id llama-13b  # or any `model_id` defined in `models.yml`
 ```
 
 - Try non-streaming mode by restarting Chatbot UI:
