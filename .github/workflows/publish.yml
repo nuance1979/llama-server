@@ -2,9 +2,13 @@ name: Publish
 
 on:
   workflow_dispatch:
+  pull_request:
   push:
     branches:
       - main
+  release:
+    types:
+      - published
 
 jobs:
   build:
