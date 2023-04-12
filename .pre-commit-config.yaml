@@ -14,6 +14,7 @@ repos:
       - id: check-yaml
       - id: debug-statements
       - id: end-of-file-fixer
+        exclude: ^llama_server/prompts/
       - id: trailing-whitespace
       - id: check-vcs-permalinks
   - repo: https://github.com/PyCQA/flake8

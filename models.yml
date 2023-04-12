@@ -1,0 +1,21 @@
+---
+# model_id:
+#   name: display_name
+#   path: path_to_model_file
+#
+# Note: path can be relative to `model_home` or absolute
+#
+model_home: ./models
+models:
+  llama-7b:
+    name: LLAMA-7B
+    path: 7B/ggml-model-q4_0.bin
+  llama-13b:
+    name: LLAMA-13B
+    path: 13B/ggml-model-q4_0.bin
+  llama-33b:
+    name: LLAMA-33B
+    path: 33B/ggml-model-q4_0.bin
+  llama-65b:
+    name: LLAMA-65B
+    path: 65B/ggml-model-q4_0.bin

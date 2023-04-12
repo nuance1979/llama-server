@@ -1,8 +1,12 @@
 # LLaMA Server
 
-LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
+[![PyPI version](https://img.shields.io/pypi/v/llama-server)](https://pypi.org/project/llama-server/)[![Unit test](https://github.com/nuance1979/llama-server/actions/workflows/test.yml/badge.svg?branch=main&&event=push)](https://github.com/nuance1979/llama-server/actions)[![GitHub stars](https://img.shields.io/github/stars/nuance1979/llama-server)](https://star-history.com/#nuance1979/llama-server&Date)[![GitHub license](https://img.shields.io/github/license/nuance1979/llama-server)](https://github.com/nuance1979/llama-server/blob/master/LICENSE)
 
-🦙LLaMA C++ ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
+LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
+
+🦙LLaMA C++ (via 🐍PyLLaMACpp) ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
+
+**UPDATE**: Now supports better streaming through [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)!
 
 **UPDATE**: Now supports streaming!
 
@@ -18,21 +22,45 @@ https://user-images.githubusercontent.com/10931178/229408428-5b6ef72d-28d0-427f-
 
 ## Setup
 
-- Install [LLaMA C++](https://github.com/ggerganov/llama.cpp) following instructions;
-  - Make sure the binary `main` is at the top level;
-  - Make sure models are converted and quantized as `models/7B/ggml-model-q4_0.bin`;
+- Get your favorite LLaMA models by
+  - Download from [🤗Hugging Face](https://huggingface.co/models?sort=downloads&search=ggml);
+  - Or follow instructions at [LLaMA C++](https://github.com/ggerganov/llama.cpp);
+  - Make sure models are converted and quantized;
+
+- Create a `models.yml` file to provide your `model_home` directory and add your favorite [South American camelids](https://en.wikipedia.org/wiki/Lama_(genus)), e.g.:
+```yaml
+model_home: /path/to/your/models
+models:
+  llama-7b:
+    name: LLAMA-7B
+    path: 7B/ggml-model-q4_0.bin  # relative to `model_home` or an absolute path
+```
+See [models.yml](https://github.com/nuance1979/llama-server/blob/main/models.yml) for an example.
 
 - Set up python environment:
 ```bash
 conda create -n llama python=3.9
 conda activate llama
-python -m pip install -r requirements.txt
 ```
 
-- Start LLaMA Server:
+- Install LLaMA Server:
+  - From PyPI:
+  ```bash
+  python -m pip install llama-server
+  ```
+  - Or from source:
+  ```bash
+  python -m pip install git+https://github.com/nuance1979/llama-server.git
+  ```
+
+- Install a patched version of PyLLaMACpp: (*Note:* this step will not be needed **after** PyLLaMACpp makes a new release.)
 ```bash
-export LLAMA_CPP_HOME=<your_llama_cpp_repo_path>
-uvicorn llama_server:app --reload
+python -m pip install git+https://github.com/nuance1979/pyllamacpp.git@dev --upgrade
+```
+
+- Start LLaMA Server with your `models.yml` file:
+```bash
+llama-server --models-yml models.yml --model-id llama-7b
 ```
 
 - Check out [my fork](https://github.com/nuance1979/chatbot-ui) of Chatbot UI and start the app;
@@ -44,18 +72,22 @@ npm i
 npm run dev
 ```
 - Open the link http://localhost:3000 in your browser;
-  - Click "OpenAI API Key" at the bottom left corner and enter your [OpenAI API Key](https://platform.openai.com/account/api-keys).
+  - Click "OpenAI API Key" at the bottom left corner and enter your [OpenAI API Key](https://platform.openai.com/account/api-keys);
+  - Or follow instructions at [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui) to put your key into a `.env.local` file and restart;
+  ```bash
+  cp .env.local.example .env.local
+  <edit .env.local to add your OPENAI_API_KEY>
+  ```
 - Enjoy!
 
 ## More
 
 - Try a larger model if you have it:
 ```bash
-export LLAMA_MODEL_ID=llama-13b  # llama-7b/llama-33b/llama-65b
-uvicorn llama_server:app --reload
+llama-server --models-yml models.yml --model-id llama-13b  # or any `model_id` defined in `models.yml`
 ```
 
-- Try streaming mode by restarting Chatbot UI:
+- Try non-streaming mode by restarting Chatbot UI:
 ```bash
 export LLAMA_STREAM_MODE=1  # 0 to disable streaming
 npm run dev
@@ -63,9 +95,8 @@ npm run dev
 
 ## Limitations
 
-- It does not work on Windows because of the limitations of [selectors](https://docs.python.org/3/library/selectors.html);
 - "Regenerate response" is currently not working;
-- IMHO, the prompt/reverse-prompt machanism of LLaMA C++'s CLI needs an overhaul. I tried very hard to dance around it but the whole thing is still a hack.
+- IMHO, the prompt/reverse-prompt machanism of LLaMA C++'s interactive mode needs an overhaul. I tried very hard to dance around it but the whole thing is still a hack.
 
 ## Fun facts
 
