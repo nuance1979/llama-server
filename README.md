@@ -11,6 +11,10 @@ LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llam
 **UPDATE**: Now supports streaming!
 
 ## Demo
+- Better Streaming
+
+https://user-images.githubusercontent.com/10931178/231539194-052f7c5f-c7a3-42b7-9f8b-142422e42a67.mov
+
 - Streaming
 
 https://user-images.githubusercontent.com/10931178/229980159-61546fa6-2985-4cdc-8230-5dcb6a69c559.mov
