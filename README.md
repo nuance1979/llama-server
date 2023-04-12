@@ -53,9 +53,9 @@ conda activate llama
   python -m pip install git+https://github.com/nuance1979/llama-server.git
   ```
 
-- Install latest version of PyLLaMACpp: (*Note:* this step will not be needed **after** PyLLaMACpp makes a new release.)
+- Install a patched version of PyLLaMACpp: (*Note:* this step will not be needed **after** PyLLaMACpp makes a new release.)
 ```bash
-python -m pip install git+https://github.com/nomic-ai/pyllamacpp.git --upgrade
+python -m pip install git+https://github.com/nuance1979/pyllamacpp.git@dev --upgrade
 ```
 
 - Start LLaMA Server with your `models.yml` file:
