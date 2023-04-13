@@ -1,6 +1,6 @@
 # LLaMA Server
 
-[![PyPI version](https://img.shields.io/pypi/v/llama-server)](https://pypi.org/project/llama-server/)[![Unit test](https://github.com/nuance1979/llama-server/actions/workflows/test.yml/badge.svg?branch=main&&event=push)](https://github.com/nuance1979/llama-server/actions)[![GitHub stars](https://img.shields.io/github/stars/nuance1979/llama-server)](https://star-history.com/#nuance1979/llama-server&Date)[![GitHub license](https://img.shields.io/github/license/nuance1979/llama-server)](https://github.com/nuance1979/llama-server/blob/master/LICENSE)
+[![PyPI version](https://img.shields.io/pypi/v/llama-server)](https://pypi.org/project/llama-server/) [![Unit test](https://github.com/nuance1979/llama-server/actions/workflows/test.yml/badge.svg?branch=main&&event=push)](https://github.com/nuance1979/llama-server/actions) [![GitHub stars](https://img.shields.io/github/stars/nuance1979/llama-server)](https://star-history.com/#nuance1979/llama-server&Date) [![GitHub license](https://img.shields.io/github/license/nuance1979/llama-server)](https://github.com/nuance1979/llama-server/blob/master/LICENSE)
 
 LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
@@ -93,7 +93,7 @@ llama-server --models-yml models.yml --model-id llama-13b  # or any `model_id` d
 
 - Try non-streaming mode by restarting Chatbot UI:
 ```bash
-export LLAMA_STREAM_MODE=1  # 0 to disable streaming
+export LLAMA_STREAM_MODE=0  # 1 to enable streaming
 npm run dev
 ```
 
