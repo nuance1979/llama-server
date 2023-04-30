@@ -2,11 +2,13 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/llama-server)](https://pypi.org/project/llama-server/) [![Unit test](https://github.com/nuance1979/llama-server/actions/workflows/test.yml/badge.svg?branch=main&&event=push)](https://github.com/nuance1979/llama-server/actions) [![GitHub stars](https://img.shields.io/github/stars/nuance1979/llama-server)](https://star-history.com/#nuance1979/llama-server&Date) [![GitHub license](https://img.shields.io/github/license/nuance1979/llama-server)](https://github.com/nuance1979/llama-server/blob/master/LICENSE)
 
-LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
+LLaMA Server combines the power of [LLaMA C++](https://github.com/ggerganov/llama.cpp) (via [PyLLaMACpp](https://github.com/abdeladim-s/pyllamacpp)) with the beauty of [Chatbot UI](https://github.com/mckaywrigley/chatbot-ui).
 
 🦙LLaMA C++ (via 🐍PyLLaMACpp) ➕ 🤖Chatbot UI ➕ 🔗LLaMA Server 🟰 😊
 
-**UPDATE**: Now supports better streaming through [PyLLaMACpp](https://github.com/nomic-ai/pyllamacpp)!
+**UPDATE**: Greatly simplified implementation thanks to the [awesome Pythonic APIs](https://github.com/abdeladim-s/pyllamacpp#different-persona) of PyLLaMACpp 2.0.0!
+
+**UPDATE**: Now supports better streaming through [PyLLaMACpp](https://github.com/abdeladim-s/pyllamacpp)!
 
 **UPDATE**: Now supports streaming!
 
@@ -57,11 +59,6 @@ conda activate llama
   python -m pip install git+https://github.com/nuance1979/llama-server.git
   ```
 
-- Install a patched version of PyLLaMACpp: (*Note:* this step will not be needed **after** PyLLaMACpp makes a new release.)
-```bash
-python -m pip install git+https://github.com/nuance1979/pyllamacpp.git@dev --upgrade
-```
-
 - Start LLaMA Server with your `models.yml` file:
 ```bash
 llama-server --models-yml models.yml --model-id llama-7b
@@ -96,11 +93,6 @@ llama-server --models-yml models.yml --model-id llama-13b  # or any `model_id` d
 export LLAMA_STREAM_MODE=0  # 1 to enable streaming
 npm run dev
 ```
-
-## Limitations
-
-- "Regenerate response" is currently not working;
-- IMHO, the prompt/reverse-prompt machanism of LLaMA C++'s interactive mode needs an overhaul. I tried very hard to dance around it but the whole thing is still a hack.
 
 ## Fun facts
 

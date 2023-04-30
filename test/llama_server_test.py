@@ -3,54 +3,75 @@
 # Copyright (c) 2023 Yi Su. All rights reserved.
 #
 """Test llama server."""
+import logging
 from unittest import TestCase
+from unittest.mock import patch
 
-from llama_server.server import Buffer
+from fastapi.testclient import TestClient
+
+from llama_server.server import app
+from llama_server.server import Conversation
+from llama_server.server import Message
 
 
-class TestBuffer(TestCase):
-    """Test Buffer class."""
+class MockModel:
+    tokens = ["44th", " presi", "dent", " of", " USA"]
+
+    def generate(self, *args, **kwargs):
+        for tok in MockModel.tokens:
+            yield tok
+
+
+class Testapp(TestCase):
+    """Test the server."""
 
     def setUp(self):
-        self._buffer = Buffer(10, "user:")
+        self._client = TestClient(app)
 
-    def testInit(self):
-        self.assertTrue(isinstance(self._buffer, Buffer))
+    @patch("llama_server.server.model_id", "myModelId")
+    def testGetModels(self):
+        response = self._client.get("/v1/models")
+        self.assertEqual(200, response.status_code)
+        json = response.json()
+        self.assertEqual(1, len(json["data"]))
+        self.assertEqual("myModelId", json["data"][0]["id"])
 
-    def testAppendPopleft(self):
-        self.assertEqual(0, len(self._buffer))
-        self._buffer.append("0123456789")
-        self.assertEqual(0, len(self._buffer))  # consume prompt
-        self._buffer.append("test")
-        self.assertEqual(4, len(self._buffer))
-        self._buffer.append("abc")
-        self.assertEqual(7, len(self._buffer))
-        self.assertEqual("te", self._buffer.popleft())  # because len("user:") == 5
-        self.assertEqual("", self._buffer.popleft())
-        self._buffer.append("this is test")
-        self.assertEqual("st", self._buffer.popleft())
-        self.assertEqual("abc", self._buffer.popleft())
+    @patch("llama_server.server.logger", logging)
+    @patch("llama_server.server.model_id", "myModelId")
+    @patch("llama_server.server.model", MockModel())
+    def testPostChat(self):
+        conv = Conversation(
+            model="myModelId",
+            messages=[Message(role="user", content="who is barack obama?")],
+            max_tokens=256,
+            temperature=0.8,
+            stream=False,
+        )
+        response = self._client.post("/v1/chat/completions", data=conv.json())
+        json = response.json()
+        self.assertEqual(1, len(json["choices"]))
+        self.assertEqual("assistant", json["choices"][0]["message"]["role"])
+        self.assertEqual(
+            "".join(MockModel.tokens), json["choices"][0]["message"]["content"]
+        )
 
-    def testPromptConsumed(self):
-        self._buffer.append("abcdefgh")
-        self.assertFalse(self._buffer.prompt_consumed())
-        self._buffer.append("123")
-        self.assertTrue(self._buffer.prompt_consumed())
+    @patch("llama_server.server.logger", logging)
+    @patch("llama_server.server.model_id", "myModelId")
+    @patch("llama_server.server.model", MockModel())
+    def testPostChatStreaming(self):
+        conv = Conversation(
+            model="myModelId",
+            messages=[Message(role="user", content="who is barack obama?")],
+            max_tokens=256,
+            temperature=0.8,
+            stream=True,
+        )
+        response = self._client.post("/v1/chat/completions", data=conv.json())
+        from json import loads
 
-    def testTurnends(self):
-        self.assertFalse(self._buffer.turnends())
-        self._buffer.append("0123456789")
-        self._buffer.append("user")
-        self.assertFalse(self._buffer.turnends())
-        self._buffer.append(":")
-        self.assertTrue(self._buffer.turnends())
-
-    def testClear(self):
-        self._buffer.append("0123456789")
-        self.assertTrue(self._buffer.prompt_consumed())
-        self._buffer.append("abc")
-        self._buffer.append("xyz")
-        self.assertEqual(6, len(self._buffer))
-        self._buffer.clear()
-        self.assertEqual(0, len(self._buffer))
-        self.assertTrue(self._buffer.prompt_consumed())
+        datalines = [line for line in response.iter_lines() if line.startswith("data")]
+        for line, tok in zip(datalines, MockModel.tokens):
+            json = loads(line[6:])
+            self.assertEqual(1, len(json["choices"]))
+            self.assertEqual("assistant", json["choices"][0]["delta"]["role"])
+            self.assertEqual(tok, json["choices"][0]["delta"]["content"])
