@@ -70,8 +70,12 @@ class Testapp(TestCase):
         from json import loads
 
         datalines = [line for line in response.iter_lines() if line.startswith("data")]
+        self.assertEqual(len(MockModel.tokens) + 1, len(datalines))
         for line, tok in zip(datalines, MockModel.tokens):
-            json = loads(line[6:])
+            json = loads(line[6:])  # skip prefix `data: `
             self.assertEqual(1, len(json["choices"]))
             self.assertEqual("assistant", json["choices"][0]["delta"]["role"])
             self.assertEqual(tok, json["choices"][0]["delta"]["content"])
+        json = loads(datalines[-1][6:])
+        self.assertEqual(1, len(json["choices"]))
+        self.assertEqual("stop", json["choices"][0]["finish_reason"])

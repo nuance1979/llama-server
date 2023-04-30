@@ -43,6 +43,7 @@ class Conversation(BaseModel):
 class Choice(BaseModel):
     message: Optional[Message] = None
     delta: Optional[Message] = None
+    finish_reason: Optional[str] = None
 
 
 class Completion(BaseModel):
@@ -67,22 +68,27 @@ model = None
 app = FastAPI()
 
 
-def _chat(user_utt: str) -> Generator[str, None, None]:
-    return model.generate(user_utt, n_predict=256, repeat_penalty=1.0, n_threads=8)
+def _chat(user_utt: str, temperature: float) -> Generator[str, None, None]:
+    return model.generate(
+        user_utt, n_predict=256, repeat_penalty=1.0, n_threads=8, temp=temperature
+    )
 
 
-def chat_stream(user_utt: str) -> Generator[Dict[str, Any], None, None]:
-    for text in _chat(user_utt):
+def chat_stream(
+    user_utt: str, temperature: float
+) -> Generator[Dict[str, Any], None, None]:
+    for text in _chat(user_utt, temperature):
         logger.debug("text: %s", text)
         payload = Completion(
             choices=[Choice(delta=Message(role="assistant", content=text))]
         )
         yield {"event": "event", "data": payload.json()}
-    yield {"event": "event", "data": "[DONE]"}
+    payload = Completion(choices=[Choice(finish_reason="stop")])
+    yield {"event": "event", "data": payload.json()}
 
 
-def chat_nonstream(user_utt: str) -> Completion:
-    assistant_utt = "".join(_chat(user_utt))
+def chat_nonstream(user_utt: str, temperature: float) -> Completion:
+    assistant_utt = "".join(_chat(user_utt, temperature))
     logger.info("assistant: %s", assistant_utt)
     return Completion(
         choices=[Choice(message=Message(role="assistant", content=assistant_utt))]
@@ -92,11 +98,14 @@ def chat_nonstream(user_utt: str) -> Completion:
 @app.post("/v1/chat/completions")
 def chat(conv: Conversation):
     user_utt = conv.messages[-1].content
-    logger.info("user: %s", user_utt)
+    temperature = conv.temperature
+    logger.info("user: %s temperature: %f", user_utt, temperature)
     if not conv.stream:
-        return chat_nonstream(user_utt)
+        return chat_nonstream(user_utt, temperature)
     else:
-        return EventSourceResponse(chat_stream(user_utt), ping_message_factory=None)
+        return EventSourceResponse(
+            chat_stream(user_utt, temperature), ping_message_factory=None
+        )
 
 
 @app.get("/v1/models")
