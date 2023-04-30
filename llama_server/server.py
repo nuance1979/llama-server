@@ -5,11 +5,6 @@
 """Serve llama models with llama.cpp ."""
 import logging
 import os
-import time
-from collections import deque
-from contextlib import asynccontextmanager
-from multiprocessing import Process
-from multiprocessing import Queue
 from pathlib import Path
 from typing import Any
 from typing import Dict
@@ -27,10 +22,9 @@ from sse_starlette import EventSourceResponse
 
 
 PROMPT_PATH = Path(__file__).parent / "prompts" / "chat-with-bob.txt"
-PROMPT = PROMPT_PATH.read_text(encoding="utf-8").strip()
-PROMPT_SIZE = len(PROMPT)
-REVERSE_PROMPT = "User:"
-REPLY_PREFIX = "Bob: "
+PROMPT = PROMPT_PATH.read_text(encoding="utf-8")
+REVERSE_PROMPT = "\n User:"
+REPLY_PREFIX = "\n Bob:"
 
 
 class Message(BaseModel):
@@ -66,135 +60,25 @@ class ModelList(BaseModel):
     object: str = "list"
 
 
-class Buffer:
-    def __init__(self, prompt_size: int, reverse_prompt: str) -> None:
-        self._q = deque(maxlen=10)
-        self._c = 0
-        self._prompt_size = prompt_size
-        self._reverse_prompt = reverse_prompt
-        self._is_first = True
-        self._c_first = 0
-
-    def __len__(self) -> int:
-        return self._c
-
-    def prompt_consumed(self) -> bool:
-        return self._c_first >= self._prompt_size
-
-    def clear(self) -> None:
-        self._q.clear()
-        self._c = 0
-
-    def append(self, data: str) -> None:
-        if self._is_first:
-            self._c_first += len(data)
-            if self._c_first < self._prompt_size:
-                return
-            else:
-                self._is_first = False
-                diff = self._c_first - self._prompt_size
-                if diff > 0:
-                    self.append(data[-diff:])
-                self._c_first = self._prompt_size
-        else:
-            self._c += len(data)
-            self._q.append(data)
-
-    def popleft(self) -> str:
-        if self._c < len(self._reverse_prompt):
-            return ""
-        data = self._q.popleft()
-        self._c -= len(data)
-        if self._c < len(self._reverse_prompt):
-            diff = self._c - len(self._reverse_prompt)
-            self._q.appendleft(data[diff:])
-            self._c = len(self._reverse_prompt)
-            data = data[:diff]
-        return data
-
-    def turnends(self) -> bool:
-        return "".join(self._q).endswith(self._reverse_prompt)
-
-
-logging.basicConfig(
-    format="%(asctime)s %(name)-12s %(levelname)-8s %(message)s", level=logging.INFO
-)
-logger = logging.getLogger(name=__name__)
-
+logger = None
 model_id = None
-model_path = None
-output_q = Queue()
-input_q = Queue()
-buffer = Buffer(PROMPT_SIZE, REVERSE_PROMPT)
+model = None
+
+app = FastAPI()
 
 
-def generate(model_path: str, input_q: Queue, output_q: Queue) -> None:
-    def output_callback(text: str) -> None:
-        output_q.put(text)
-
-    def input_callback() -> str:
-        return input_q.get()
-
-    model = Model(ggml_model=model_path, n_ctx=512)
-    model.generate(
-        PROMPT,
-        new_text_callback=output_callback,
-        grab_text_callback=input_callback,
-        n_predict=256,
-        n_batch=1024,
-        n_keep=48,
-        repeat_penalty=1.0,
-        n_threads=8,
-        interactive=True,
-        antiprompt=[REVERSE_PROMPT],
-    )
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    p = Process(target=generate, args=(model_path, input_q, output_q))
-    p.start()
-    # Skip system prompt
-    while not buffer.prompt_consumed():
-        buffer.append(output_q.get())
-    logger.info("ready to serve...")
-    yield
-    input_q.close()
-    output_q.close()
-    if p.is_alive():
-        p.terminate()
-        time.sleep(5)
-        p.kill()
-
-
-app = FastAPI(lifespan=lifespan)
+def _chat(user_utt: str) -> Generator[str, None, None]:
+    return model.generate(user_utt, n_predict=256, repeat_penalty=1.0, n_threads=8)
 
 
 def chat_stream(user_utt: str) -> Generator[Dict[str, Any], None, None]:
     for text in _chat(user_utt):
+        logger.debug("text: %s", text)
         payload = Completion(
             choices=[Choice(delta=Message(role="assistant", content=text))]
         )
         yield {"event": "event", "data": payload.json()}
     yield {"event": "event", "data": "[DONE]"}
-
-
-def _chat(user_utt: str) -> Generator[str, None, None]:
-    input_q.put(user_utt)
-    counter = 0
-    while not buffer.turnends():
-        text = output_q.get()
-        counter += len(text)
-        if counter <= len(REPLY_PREFIX):
-            continue
-        buffer.append(text)
-        yield buffer.popleft()
-    while True:
-        text = buffer.popleft()
-        if not text:
-            break
-        yield text
-    buffer.clear()
 
 
 def chat_nonstream(user_utt: str) -> Completion:
@@ -212,7 +96,7 @@ def chat(conv: Conversation):
     if not conv.stream:
         return chat_nonstream(user_utt)
     else:
-        return EventSourceResponse(chat_stream(user_utt))
+        return EventSourceResponse(chat_stream(user_utt), ping_message_factory=None)
 
 
 @app.get("/v1/models")
@@ -247,6 +131,12 @@ class KnownModels(BaseModel):
 )
 @click.option("--model-id", type=click.STRING, default="llama-7b", help="Model id.")
 @click.option("--model-path", type=click.Path(exists=True), help="Model path.")
+@click.option(
+    "--log-level",
+    type=click.Choice(["INFO", "DEBUG", "WARNING", "ERROR", "CRITICAL"]),
+    default="INFO",
+    help="Log level.",
+)
 def main(
     models_yml: Path,
     host: str,
@@ -254,6 +144,7 @@ def main(
     reload: bool,
     model_id: Optional[str] = None,
     model_path: Optional[Path] = None,
+    log_level: Optional[str] = None,
 ):
     with open(models_yml, "r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
@@ -266,7 +157,15 @@ def main(
         if not model_path.is_absolute():
             model_path = Path(KNOWN_MODELS.model_home) / model_path
     globals()["model_id"] = model_id
-    globals()["model_path"] = str(model_path)
+    globals()["model"] = Model(
+        ggml_model=str(model_path),
+        n_ctx=512,
+        prompt_context=PROMPT,
+        prompt_prefix=REVERSE_PROMPT,
+        prompt_suffix=REPLY_PREFIX,
+    )
+    globals()["logger"] = logging.getLogger(name=__name__)
+    globals()["logger"].setLevel(log_level)
 
     uvicorn.run("llama_server.server:app", host=host, port=port, reload=reload)
 

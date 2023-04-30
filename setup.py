@@ -27,6 +27,7 @@ def get_install_requires() -> str:
 def get_extras_require() -> str:
     req = {
         "dev": [
+            "httpx",
             "pre-commit",
             "pytest",
             "pytest-cov",
