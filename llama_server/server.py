@@ -167,7 +167,7 @@ def main(
             model_path = Path(KNOWN_MODELS.model_home) / model_path
     globals()["model_id"] = model_id
     globals()["model"] = Model(
-        ggml_model=str(model_path),
+        model_path=str(model_path),
         n_ctx=512,
         prompt_context=PROMPT,
         prompt_prefix=REVERSE_PROMPT,
