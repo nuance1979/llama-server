@@ -32,6 +32,7 @@ def get_extras_require() -> str:
             "pytest",
             "pytest-cov",
             "pytest-xdist",
+            "numpy",
         ],
     }
     return req
